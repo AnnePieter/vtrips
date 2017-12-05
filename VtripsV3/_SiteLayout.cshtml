@@ -1,0 +1,62 @@
+﻿@{ 
+    User usr = (User)(Session["user"]);
+
+    if (Request.Form["logOut"] == "Log out")
+    {
+        Session["user"] = null;
+        Session["LoggedIn"] = null;
+        Response.Redirect("~/");
+    }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>@Page.Title - My ASP.NET Web Page</title>
+        <link href="~/Content/themes/base/jquery.ui.all.css" rel="stylesheet" type="text/css" />
+        <link href="~/Content/Site.css" rel="stylesheet" type="text/css" />
+        <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+        <script src="~/Scripts/jquery-1.10.2.min.js"></script>
+        <script src="~/Scripts/jquery-ui-1.10.3.js"></script>
+        <script src="~/Scripts/modernizr-2.6.2.js"></script>
+        <meta name="viewport" content="width=device-width" />
+    </head>
+    <body>
+        <header>
+            <div class="content-wrapper">
+                <div class="float-left">
+                    <p class="site-title"><img src="~/resources/LogoVentura.png" alt="Logo" height="40" width="200" /></p>
+                </div>
+                <div class="float-right">
+                    <nav>
+                        <ul id="menu">
+                            @if (usr != null)
+                            {
+                             <li>
+                                <form id="menu" method="post">
+                                    <input type="submit" style="font-size: 0.85em;" name="logOut" value="Log out">
+                                </form>
+                             </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </header>
+        <div id="body">
+            @RenderSection("featured", required: false)
+            <section class="content-wrapper main-content clear-fix">
+                @RenderBody()
+            </section>
+        </div>
+        <footer>
+            <div class="content-wrapper">
+                <div class="float-left">
+                    <p>&copy; @DateTime.Now.Year - My ASP.NET Web Page</p>
+                </div>
+            </div>
+        </footer>
+        @RenderSection("Scripts", required: false)
+    </body>
+</html>

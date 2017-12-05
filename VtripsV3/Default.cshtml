@@ -1,0 +1,547 @@
+﻿@{ 
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "VTrip";
+
+
+    string email = "";
+    string password = "";
+    string lastName = "";
+    string firstName = "";
+    string department = "";
+    string employeeNumber = "";
+    string payNumber = "";
+    bool checker = false;
+    int quarter = 0;
+    User user;
+    List<string[]> dataList = new List<string[]>();
+    //TODO Manager authentication check?
+
+    // Setup validation
+    if (Request.Form["LoginBtn"] == "Log in")
+    {
+        Validation.RequireField("lemail", "You must specify an email address.");
+        Validation.RequireField("lpassword", "You must specify a password.");
+        Validation.Add("lpassword",
+            Validator.StringLength(
+                maxLength: Int32.MaxValue,
+                minLength: 6,
+                errorMessage: "Password must be at least 6 characters"));
+        //login
+
+        if (Validation.IsValid())
+        {
+            email = Request.Form["lemail"];
+            password = Request.Form["lpassword"];
+
+            if (Functions.Login(email, password))
+            {
+                user = Functions.GetUser(email);
+                Session["quarter"] = 0;
+                Session["year"] = DateTime.Now.Year.ToString();
+                Session["loginVisual"] = Functions.HideShow((string)Session["loginVisual"]);
+                Session["TripVisual"] = Functions.HideShow((string)Session["TripVisual"]);
+                Session["user"] = user;
+                Session["loggedIn"] = new object();
+            }
+            else
+            {
+                ModelState.AddFormError("The user name or password provided is incorrect.");
+            }
+        }
+    }
+
+    //register
+    else if (Request.Form["RegistrationBtn"] == "Register")
+    {
+        Validation.RequireField("remail", "You must specify an email address.");
+        Validation.RequireField("rpassword", "Password cannot be blank.");
+        Validation.Add("confirmPassword", Validator.EqualsTo("rpassword", "Password and confirmation password do not match."));
+        Validation.Add("rpassword",
+            Validator.StringLength(
+                maxLength: Int32.MaxValue,
+                minLength: 6,
+                errorMessage: "Password must be at least 6 characters"));
+
+        if (Validation.IsValid())
+        {
+
+            email = Request.Form["remail"];
+            password = Request.Form["rpassword"];
+            lastName = Request.Form["lastName"];
+            firstName = Request.Form["firstName"];
+            department = Request.Form["department"];
+
+            if (email.Contains("@venturasystems"))
+            {
+
+                string emailtemp = string.Empty;
+                string[] emailArrg = email.Split('@');
+                string host = emailArrg[1].Split('.').First();
+                emailtemp = emailArrg[0] + '@' + host;
+
+                if (!Functions.CheckHost(host))
+                {
+                    ModelState.AddFormError("Please use a Ventura e-mail account.");
+                }
+                if (!Functions.CheckIfAvaillable(emailtemp, "Employee", "Email"))
+                {
+                    ModelState.AddFormError("Email address is already in use.");
+                }
+                else
+                {
+                    Functions.Register(email, password, firstName, lastName, department);
+                    if (Functions.Login(email, password))
+                    {
+                        user = Functions.GetUser(email);
+                        Session["loginVisual"] = "none";
+                        Session["registerVisual"] = "none";
+                        Session["TripVisual"] = "";
+                        Session["user"] = user;
+                        Functions.SendMail(user.EmployeeID, user.FirstName, user.LastName);
+                    }
+                }
+            }
+            else
+            {
+                ModelState.AddFormError("Please use a venturasystems mailaccount");
+            }
+        }
+    }
+
+    //fill dropdown met Departments
+    if (Request.Form["registerBtn"] == "Register here")
+    {
+        Session["registerVisual"] = Functions.HideShow((string)Session["registerVisual"]);
+        Session["loginVisual"] = Functions.HideShow((string)Session["loginVisual"]);
+        Session["loggedIn"] = new object();
+    }
+
+    user = (User)Session["user"];
+
+    // trip
+    if (Request.Form["TripBtn"] == "Register trip")
+    {
+
+        //validate 
+        Validation.RequireField("startDate", "Specify a start date");
+        Validation.RequireField("endDate", "Specify a end date");
+        Validation.RequireField("reason", "There must be a reason.");
+        Validation.RequireField("destination", "Enter a destination");
+
+        if (Validation.IsValid())
+        {
+            if (Functions.AllowTrip(Convert.ToDateTime(Request.Form["startDate"]), Convert.ToDateTime(Request.Form["endDate"]), user.EmployeeID))
+            {
+                Functions.AddTrip(Convert.ToDateTime(Request.Form["startDate"]), Convert.ToDateTime(Request.Form["endDate"]), Request.Form["reason"], Request.Form["destination"], user.EmployeeID, 1);
+            }
+        }
+    }
+
+    if (user != null && (user.manager || user.payer))
+    {
+        checker = true;
+    }
+
+    if (Request.Form["history"] == "Display")
+    {
+        Session["quarter"] = int.Parse(Request.Form["quarter"]);
+        Session["year"] = Request.Form["year"].ToString();
+    }
+
+    if (Request.Form["myTrips"] == "My trips")
+    {
+        Session["selectedUserId"] = null;
+        dataList = Functions.GetDisplayData(user.EmployeeID, checker, false);
+        Session["tableCheckVisual1"] = false;
+        Session["tableCheckVisual2"] = false;
+    }
+
+    if (Session["loggedIn"] == null)
+    {
+        Session["loginVisual"] = "";
+        Session["TripVisual"] = "none";
+        Session["registerVisual"] = "none";
+        Session["tableCheckVisual1"] = false;
+        Session["tableCheckVisual2"] = false;
+    }
+
+    if ((string)Session["TripVisual"] == "")
+    {
+        dataList = Functions.GetDisplayData(user.EmployeeID, checker, false);
+    }
+
+    if (Request.Form["delete"] != null)
+    {
+        var delete = Request.Form["delete"];
+
+        //delete in een query  met een delete afhankelijk van status mag je wel of niet deleten.
+        Functions.DeleteTrip(Convert.ToDateTime(Request.Form["delete"]), user.EmployeeID);
+
+
+        Response.Redirect(Request.RawUrl);
+    }
+
+    if (Request.Form["checkTrip"] != null && user.manager == true)
+    {
+        string[] agree = Request.Form["checkTrip"].Split(',');
+
+        if (agree[1] == "accepted")
+        {
+            Functions.acceptTrip(user.EmployeeID, Session["selectedUserId"], Convert.ToDateTime(agree[0]), agree[1]);
+            dataList = Functions.GetDisplayData((int)Session["selectedUserId"], checker, false);
+        }
+        if (agree[1] == "declined")
+        {
+            Functions.acceptTrip(user.EmployeeID, Session["selectedUserId"], Convert.ToDateTime(agree[0]), agree[1]);
+            dataList = Functions.GetDisplayData((int)Session["selectedUserId"], checker, false);
+        }
+    }
+
+    else if (Request.Form["checkTrip"] != null && user.payer == true)
+    {
+        string[] agree = Request.Form["checkTrip"].Split(',');
+
+        if (agree[1] == "payed")
+        {
+            Functions.acceptTrip(user.EmployeeID, Session["selectedUserId"], Convert.ToDateTime(agree[0]), agree[1]);
+            dataList = Functions.GetDisplayData((int)Session["selectedUserId"], checker, true);
+        }
+    }
+
+    else if (Request.Form["checkTrip"] != null)
+    {
+        string[] agree = Request.Form["checkTrip"].Split(',');
+
+        if (agree[1] == "applied")
+        {
+            Functions.acceptTrip(user.EmployeeID, user.EmployeeID, Convert.ToDateTime(agree[0]), agree[1]);
+            dataList = Functions.GetDisplayData(user.EmployeeID, checker, false);
+        }
+    }
+
+    if (Request.Form["TripBtn"] == "Select employee")
+    {
+        Session["selectedUserId"] = int.Parse(Request.Form["selectEmployee"]);
+        if (user.manager)
+        {
+            dataList = Functions.GetDisplayData((int)Session["selectedUserId"], checker, false);
+            Session["tableCheckVisual1"] = true;
+        }
+
+        if (user.payer)
+        {
+            dataList = Functions.GetDisplayData((int)Session["selectedUserId"], checker, true);
+            Session["tableCheckVisual2"] = true;
+        }
+
+    }
+
+    if (Request.Form["returnBtn"] == "Return to login")
+    {
+        Session["loginVisual"] = "";
+        Session["registerVisual"] = "none";
+    }
+
+
+
+@*________________________________*@
+@*START OF THE VISUAL PAGE PARTS!!*@
+@*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*@
+
+}
+    @section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+}
+@*________________________________*@
+@*         Login Page!!           *@
+@*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*@
+<section id="loginForm" style="display: @Html.Raw(Session["loginVisual"])">
+    <h2>Use a local account to log in.</h2>
+        <form id="login" method="post" align="left">
+            @AntiForgery.GetHtml()
+            @* If one or more validation errors exist, show an error *@
+            @Html.ValidationSummary("Log in was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+
+            <fieldset>
+                <legend>Log in to Your Account</legend>
+                <ol>
+                    <li class="email">
+                        <label for="email" @if (!ModelState.IsValidField("lemail"))
+                        { <text> class="error-label" </text>   }>Email address</label>
+                        <input type="text" id="lemail" name="lemail" value="@email" @Validation.For("lemail") />
+                        @* Write any user name validation errors to the page *@
+                        @Html.ValidationMessage("lemail")
+                    </li>
+                    <li class="password">
+                        <label for="password" @if (!ModelState.IsValidField("lpassword"))
+                        { <text> class="error-label" </text>   }>Password</label>
+                        <input type="password" id="lpassword" name="lpassword" @Validation.For("lpassword") />
+                        @* Write any password validation errors to the page *@
+                        @Html.ValidationMessage("lpassword")
+                    </li>
+                </ol>
+                <input type="submit" name="LoginBtn" value="Log in" />
+                <input type="submit" name="registerBtn" value="Register here" />
+            </fieldset>
+        </form>
+</section>
+
+@*________________________________*@
+@*       REGISTER Page!!          *@
+@*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*@
+<section id="registerForm" style="display: @Html.Raw(Session["registerVisual"])">
+    <form id="register" method="post">
+        @AntiForgery.GetHtml()
+        @* If at least one validation error exists, notify the user *@
+        @Html.ValidationSummary("Account creation was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+
+        <fieldset>
+            <legend>Registration Form</legend>
+            <ol>
+                <li class="firstname">
+                    <label for="firstname">First name</label>
+                    <input type="text" id="firstname" name="firstname" value="@firstName" />
+                </li>
+                <li class="lastname">
+                    <label for="lastname">Last name</label>
+                    <input type="text" id="lastname" name="lastname" value="@lastName" />
+                </li>
+                <li class="email">
+                    <label for="email" @if (!ModelState.IsValidField("remail"))
+                    { <text> class="error-label" </text> }>Email address</label>
+                    <input type="text" id="remail" name="remail" value="@email" @Validation.For("remail") />
+                    @* Write any email validation errors to the page *@
+                    @Html.ValidationMessage("remail")
+                </li>
+                <li class="password">
+                    <label for="password" @if (!ModelState.IsValidField("rpassword"))
+                    { <text> class="error-label" </text> }>Password</label>
+                    <input type="password" id="rpassword" name="rpassword" @Validation.For("rpassword") />
+                    @* Write any password validation errors to the page *@
+                    @Html.ValidationMessage("rpassword")
+                </li>
+                <li class="confirm-password">
+                    <label for="confirmPassword" @if (!ModelState.IsValidField("confirmPassword"))
+                    { <text> class="error-label" </text> }>Confirm password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" @Validation.For("confirmPassword") />
+                    @* Write any password validation errors to the page *@
+                    @Html.ValidationMessage("confirmPassword")
+                </li>
+                <li class="department">
+                    <label for="department">Department</label>
+                    <select name="department">
+                        @{if ((string)Session["registerVisual"] == "")
+                            {
+                                foreach (string str in Functions.Dropdown("Name", "Department", "true"))
+                                {
+                                    <option value="@str"> @str </option>
+                                }
+                            }
+                         }
+                    </select>
+                </li>
+            </ol>
+            <input type="submit" name="RegistrationBtn" value="Register" />
+            <input type="submit" name="returnBtn" value="Return to login" />
+        </fieldset>
+    </form>
+</section>
+
+@*-------------------------------- Trips*@
+
+<section id="Trip" style="display: @Html.Raw(Session["TripVisual"])">
+    <div id="base">
+        <h1>
+            Welcome @{  if (user != null)
+                {
+                    user.FirstName.ToString();
+                }}
+        </h1>
+    </div>
+    
+    @*
+    <div id="wrapper">
+        <div id="firstForm">
+            <h2>Register trip:</h2>
+            <form id="registerForm" method="post">
+                @AntiForgery.GetHtml()
+                 If at least one validation error exists, notify the user
+                @Html.ValidationSummary("Trip creation was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+
+                @*VALIDATION MOET NOG GEDAAN WORDEN!!
+                <fieldset>
+                    <legend>Registrate trip form</legend>
+                    <ol>
+                        <li class="startDate">
+                            <label for="startDate" @if (!ModelState.IsValidField("startDate")) { <text> class="error-label" </text>       }>Start date</label>
+                            <input type="date" id="startDate" name="startDate" value="" />
+                            @Html.ValidationMessage("startDate")
+                        </li>
+                        <li class="endDate">
+                            <label for="endDate" @if (!ModelState.IsValidField("endDate")) { <text> class="error-label" </text>       }>End date</label>
+                            <input type="date" id="endDate" name="endDate" value="" />
+                            @Html.ValidationMessage("endDate")
+                        </li>
+                        <li class="destination">
+                            <label for="destination" @if (!ModelState.IsValidField("destination")) { <text> class="error-label" </text>       }>Destination</label>
+                            <input type="text" id="destination" name="destination" />
+                            @Html.ValidationMessage("destination")
+                        </li>
+                        <li class="reason">
+                            <label for="reason" @if (!ModelState.IsValidField("reason")) { <text> class="error-label" </text>       }>Reason for the trip</label>
+                            <input type="text" id="reason" name="reason" value="" />
+                            @Html.ValidationMessage("reason")
+                        </li>
+                    </ol>
+                    <input type="submit" name="TripBtn" value="Register trip" />
+
+            </fieldset>
+        </form>
+    </div>
+
+    @*Navigation trough trips!
+
+        <div id="managerOptions">
+           <div id="form1">
+            @* HISTORY dropdown
+
+            <h2>Review history:</h2>
+            <form id="managerForm" method="post">
+                <fieldset>
+                    <legend>review history</legend>
+                    <ol>
+                        <li class="quarter">
+                            <label for="quarter">Select quarter</label>
+                            <select id="quarter" name="quarter">
+                                <option value="0"> All quarters </option>
+                                <option value="1"> Q1 </option>
+                                <option value="2"> Q2 </option>
+                                <option value="3"> Q3 </option>
+                                <option value="4"> Q4 </option>
+                            </select>
+                        </li>
+                        <li class="year">
+                            <label for="year">Choose year</label>
+                            <input type="text" name="year" id="year" value=@Session["year"].ToString()>
+                        </li>
+                        <li class="Select employee">
+                            @* dropdown voor manager van afdeling voor payer van alle werknemers
+                            <select id="qemployee" name="qemployee">
+
+                            </select>
+                        </li>
+                    </ol>
+                    <input type="submit" name="history" value="Display" />
+                </fieldset>
+                <input type="submit" name="PayedFilter" value="Review Payed" />
+            </form>
+          </div>
+
+            @*Conformation
+            <div id="form2">
+            <h2>Confirm trips of:</h2>
+            @if (user != null && (user.manager || user.payer))
+            {
+                <form id="managerForm" method="post">
+                    @AntiForgery.GetHtml()
+                    @* If at least one validation error exists, notify the user
+                    @Html.ValidationSummary("Trip creation was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+
+                    @*VALIDATION MOET NOG GEDAAN WORDEN!!
+                    <fieldset>
+                        <legend>Select employee</legend>
+                        <label for="selectEmployee">Select employee</label>
+                        <select name="selectEmployee">
+                            @if (user.manager)
+                            {
+                                foreach (KeyValuePair<User, int> usr in Functions.UserDropdown(user.department_ID, user.EmployeeID))
+                                {
+                                    string m = string.Format("{0} {1} ({2})", usr.Key.FirstName, usr.Key.LastName, usr.Value);
+                                    <option name="werknemer" value="@usr.Key.EmployeeID"> @m</option>
+                                }
+                            }
+                            @if (user.payer)
+                            {
+                                foreach (KeyValuePair<User, int> usr in Functions.PayerDropDown())
+                                {
+                                    string m = string.Format("{0} {1} ({2})", usr.Key.FirstName, usr.Key.LastName, usr.Value);
+                                    <option name="werknemer" value="@usr.Key.EmployeeID"> @m</option>
+                                }
+                            }
+
+                        </select>
+                        <input type="submit" name="TripBtn" value="Select employee" />
+
+                    </fieldset>
+                </form>
+            }
+            </div>
+
+        </div>
+    </div>
+
+        <div id="base">
+            <h2>Registered trips @(Session["selectedUserId"] != null ? Functions.GetUserByID(int.Parse(Session["selectedUserId"].ToString())) : "") </h2>
+            <form id="table" method="post">
+                <table>
+                    <tr>
+                        <th>Quarter</th>
+                        <th>Start date</th>
+                        <th>End date</th>
+                        <th>Destination</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Last altered</th>
+                        <th>total Compensation</th>
+                        <th>Comments</th>
+                        <th>Compensation</th>
+                        @if (bool.Parse(Session["tableCheckVisual1"].ToString()))
+                        {
+                            <th>Accept/Decline</th>
+                        }
+                        else if ((bool.Parse(Session["tableCheckVisual2"].ToString())))
+                        {
+                            <th>pay</th>
+                        }
+                        else
+                        {
+                            <th>check</th>
+                        }
+
+                    </tr>
+                    @foreach (string[] row in dataList)
+                    {
+                        if ((int.Parse(Session["quarter"].ToString()) == int.Parse(row[0]) || int.Parse(Session["quarter"].ToString()) == 0) && Session["year"].ToString() == row[1].Split('-').Last())
+                        {
+                        <tr>
+                            @foreach (string data in row)
+                            {
+                                <td> @data </td>
+                            }
+                            @if (bool.Parse(Session["tableCheckVisual1"].ToString()) && row[5] != "payed")
+                            {
+                                <td>
+                                    <button type="submit" name="checkTrip" value="@row[1].ToString(),accepted">Accept</button>
+                                    <button type="submit" name="checkTrip" value="@row[1].ToString(),declined">Decline</button>
+                                </td>
+                            }
+                            else if (bool.Parse(Session["tableCheckVisual2"].ToString()))
+                            {
+                                <td>
+                                    <button type="submit" name="checkTrip" value="@row[1].ToString(),payed">Payed</button>
+                                </td>
+                            }
+                            else if (row[5] == "registered" || row[5] == "applied")
+                            {
+                                <td><button type="submit" name="checkTrip" value="@row[1].ToString(),applied">Confirm</button>
+                                    <button type="submit" name="delete" value="@row[1].ToString()">Delete</button></td>
+                            }
+                        </tr>
+                        }
+                    }
+                </table>
+            </form>
+        </div>*@
+    </section>
+    

@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.12
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "VtripsV3", "..\..\WebSites\VtripsV3\", "{7E34821C-BF22-4CC3-B2FA-E0CC09A47343}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.6.1"
+		Debug.AspNetCompiler.VirtualPath = "/localhost_59809"
+		Debug.AspNetCompiler.PhysicalPath = "..\..\WebSites\VtripsV3\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\localhost_59809\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/localhost_59809"
+		Release.AspNetCompiler.PhysicalPath = "..\..\WebSites\VtripsV3\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\localhost_59809\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "59809"
+		SlnRelativePath = "..\..\WebSites\VtripsV3\"
+		DefaultWebSiteLanguage = "Visual C#"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E34821C-BF22-4CC3-B2FA-E0CC09A47343}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E34821C-BF22-4CC3-B2FA-E0CC09A47343}.Debug|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {69B74546-6EA2-40A3-B92B-1C6DF481B88E}
+	EndGlobalSection
+EndGlobal

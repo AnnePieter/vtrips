@@ -1,0 +1,59 @@
+﻿@{  Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "VTrip";
+
+
+    /*auto close*/
+
+    int ID = int.Parse(Request.Params["ID"]);
+
+    User user = new User(ID);
+
+    if (IsPost)
+    {
+        int role = 1;
+        if (Request.Form["Manager"] != "" && Request.Form["Payer"] == "")
+        {
+            role = 4;
+        }
+        else if (Request.Form["Manager"] == "" && Request.Form["Payer"] != "")
+        {
+            role = 5;
+        }
+        else if (Request.Form["Manager"] != "" && Request.Form["Payer"] != "")
+        {
+            role = 3;
+        }
+        user.ConfirmAccount(int.Parse(Request.Form["EmployeeNumber"]), int.Parse(Request.Form["PaymentNumber"]), role);
+    }
+}
+
+@*________________________________*@
+@*         confirm Form!!         *@
+@*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*@
+
+<section id="loginForm">
+    <h2>Account confirmation : @user.FirstName @user.LastName.</h2>
+    <form id="login" method="post" align="left">
+        <fieldset>
+            <legend>Confirm new account</legend>
+            <ol>
+                <li class="EmployeeNumber">
+                    <label for="EmployeeNumber">Employee number</label>
+                    <input type="text" id="EmployeeNumber" name="EmployeeNumber" value=""/>
+                </li>
+                <li class="PaymentNumber">
+                    <label for="PaymentNumber">Payment number</label>
+                    <input type="text" id="PaymentNumber" name="PaymentNumber" value="" />
+                </li>
+                <li>
+                    <input type="checkbox" name="Manager" AutoPostBack="true")/> Manager
+                </li>
+                <li>
+                    <input type="checkbox" name="Payer" value="payer" /> Payer
+                </li>              
+            </ol>
+            <input type="submit" name="confirm" value="Confirm" />
+        </fieldset>
+
+    </form>
+</section>
